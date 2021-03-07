@@ -1,6 +1,6 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/github.com/hot1989hot/simc:$SHORT_SHA', '--build-arg APIKEY=$$_BLZ_APIKEY', '--build-arg THREADS=2', '.' ]
+  args: [ 'build', '--build-arg APIKEY=$$_BLZ_APIKEY', '--build-arg THREADS=2', '-t', 'gcr.io/$PROJECT_ID/simc:$SHORT_SHA', '.' ]
   secretEnv: ['_BLZ_APIKEY']
 
 availableSecrets:
