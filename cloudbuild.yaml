@@ -10,8 +10,8 @@ steps:
 #     env: 'BLZ_APIKEY'
 
 - name: 'gcr.io/$PROJECT_ID/simc:latest'
-  entrypoint: 'bash'
-  args: ['-c', 'ls']
+  entrypoint: 'sh'
+  # args: ['-c', 'ls']
 
 artifacts:
   objects:
