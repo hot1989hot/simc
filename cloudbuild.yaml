@@ -9,7 +9,7 @@ steps:
 
 - name: 'gcr.io/$PROJECT_ID/simcbuilder'
   entrypoint: 'bash'
-  args: ['-c', 'make -C ./engine release -j ${THREADS} LTO=1 OPTS+="-Os -mtune=generic" SC_DEFAULT_APIKEY=$$BLZ_APIKEY']
+  args: ['-c', 'make -C ./engine release -j ${_THREADS} LTO=1 OPTS+="-Os -mtune=generic" SC_DEFAULT_APIKEY=$$BLZ_APIKEY']
 
 availableSecrets:
   secretManager:
