@@ -31,6 +31,10 @@ ARG APIKEY
 
 COPY . /app/SimulationCraft/
 
+RUN echo ${THREADS}
+RUN echo ${NONETWORKING}
+RUN echo ${APIKEY}
+
 # install SimulationCraft
 RUN apk --no-cache add --virtual build_dependencies \
     curl-dev \
