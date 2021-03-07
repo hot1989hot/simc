@@ -13,6 +13,6 @@ availableSecrets:
 artifacts:
   objects:
     location: 'gs://us.artifacts.stately-rampart-199708.appspot.com/'
-    paths: ['engine/simc']
+    paths: ['./engine/simc']
 
 timeout: 3600s
