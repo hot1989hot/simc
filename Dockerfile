@@ -25,7 +25,7 @@
 # base image
 FROM alpine:latest AS build
 
-ARG THREADS=1
+ARG THREADS
 ARG NONETWORKING=0
 ARG APIKEY
 
@@ -53,25 +53,25 @@ RUN apk --no-cache add --virtual build_dependencies \
 # sed -i '' -e 's/#define SC_USE_PTR 1/#define SC_USE_PTR 0/g' engine/dbc.hpp
 
 # fresh image to reduce size
-FROM alpine:latest
+# FROM alpine:latest
 
-ARG NONETWORKING=0
+# ARG NONETWORKING=0
 
-RUN if [ $NONETWORKING -eq 0 ] ; then \
-        echo "Preparing for networking" && \
-        apk --no-cache add --virtual build_dependencies \
-        libcurl \
-        libgcc \
-        libstdc++ ; \
-    else \
-        echo "Preparing for no-networking" && \
-        apk --no-cache add --virtual build_dependencies \
-        libgcc \
-        libstdc++ ; \
-    fi
+# RUN if [ $NONETWORKING -eq 0 ] ; then \
+#         echo "Preparing for networking" && \
+#         apk --no-cache add --virtual build_dependencies \
+#         libcurl \
+#         libgcc \
+#         libstdc++ ; \
+#     else \
+#         echo "Preparing for no-networking" && \
+#         apk --no-cache add --virtual build_dependencies \
+#         libgcc \
+#         libstdc++ ; \
+#     fi
 
-# get compiled simc and profiles
-COPY --from=build /app/SimulationCraft/engine/simc /app/SimulationCraft/
-COPY --from=build /app/SimulationCraft/profiles/ /app/SimulationCraft/profiles/
+# # get compiled simc and profiles
+# COPY --from=build /app/SimulationCraft/engine/simc /app/SimulationCraft/
+# COPY --from=build /app/SimulationCraft/profiles/ /app/SimulationCraft/profiles/
 
-WORKDIR /app/SimulationCraft
+# WORKDIR /app/SimulationCraft
