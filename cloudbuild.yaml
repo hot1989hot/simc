@@ -15,7 +15,7 @@ steps:
 
 artifacts:
   objects:
-    location: 'gs://us.artifacts.stately-rampart-199708.appspot.com/'
+    location: 'gs://us.artifacts.stately-rampart-199708.appspot.com/binary/'
     paths: ['./engine/simc']
 
 # images: ['gcr.io/$PROJECT_ID/simc:latest']
