@@ -14,6 +14,6 @@ artifacts:
     location: 'gs://us.artifacts.stately-rampart-199708.appspot.com/binary/'
     paths: ['./engine/simc']
 
-# images: ['gcr.io/$PROJECT_ID/simc:latest']
+images: ['gcr.io/$PROJECT_ID/simc:latest']
 
 timeout: 1800s
