@@ -1,16 +1,16 @@
 steps:
-# - name: 'gcr.io/cloud-builders/docker'
-#   entrypoint: 'bash'
-#   args: [ '-c', 'docker build --build-arg APIKEY=$$BLZ_APIKEY --build-arg THREADS=2 -t gcr.io/$PROJECT_ID/simc:latest .' ]
-#   secretEnv: ['BLZ_APIKEY']
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args: [ '-c', 'docker build --build-arg APIKEY=$$BLZ_APIKEY --build-arg THREADS=2 -t gcr.io/$PROJECT_ID/simc:latest .' ]
+  secretEnv: ['BLZ_APIKEY']
 
-# availableSecrets:
-#   secretManager:
-#   - versionName: projects/$PROJECT_ID/secrets/BlzApiKey/versions/1
-#     env: 'BLZ_APIKEY'
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/BlzApiKey/versions/1
+    env: 'BLZ_APIKEY'
 
-- name: 'gcr.io/$PROJECT_ID/simc:latest'
-  entrypoint: 'sh'
+# - name: 'gcr.io/$PROJECT_ID/simc:latest'
+#   entrypoint: 'sh'
   # args: ['-c', 'ls']
 
 artifacts:

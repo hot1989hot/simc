@@ -36,16 +36,18 @@ COPY . /app/SimulationCraft/
 # RUN echo ${APIKEY}
 
 # install SimulationCraft
-RUN apk --no-cache add --virtual build_dependencies \
-    curl-dev \
-    g++ \
-    git \
-    libcurl \
-    make
+# RUN apk --no-cache add --virtual build_dependencies \
+#     curl-dev \
+#     g++ \
+#     git \
+#     libcurl \
+#     make
 
-RUN echo "Building networking version"
-RUN make -C /app/SimulationCraft/engine release -j $THREADS LTO=1 OPTS+="-Os -mtune=generic" SC_DEFAULT_APIKEY=${APIKEY}
-RUN apk del build_dependencies
+# RUN echo "Building networking version"
+# RUN make -C /app/SimulationCraft/engine release -j $THREADS LTO=1 OPTS+="-Os -mtune=generic" SC_DEFAULT_APIKEY=${APIKEY}
+# RUN apk del build_dependencies
+
+RUN touch /app/SimulationCraft/engine/simc
 
 # disable ptr to reduce build size
 # sed -i '' -e 's/#define SC_USE_PTR 1/#define SC_USE_PTR 0/g' engine/dbc.hpp
