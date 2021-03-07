@@ -32,22 +32,26 @@ ARG APIKEY
 COPY . /app/SimulationCraft/
 
 # install SimulationCraft
-RUN 'apk --no-cache add --virtual build_dependencies \
-    curl-dev \
-    g++ \
-    git \
-    libcurl \
-    make && \
-    if [ $NONETWORKING -eq 0 ] ; then \
-        echo "Building networking version" && \
+RUN echo $NONETWORKING
+RUN echo $THREADS
+RUN echo $APIKEY
 
-        make -C /app/SimulationCraft/engine release -j $THREADS LTO=1 OPTS+="-Os -mtune=generic" SC_DEFAULT_APIKEY=${APIKEY} ;  \
-    else \
-        echo "Building no-networking version" && \
-        make -C /app/SimulationCraft/engine release -j $THREADS LTO=1 SC_NO_NETWORKING=1 OPTS+="-Os -mtune=generic" SC_DEFAULT_APIKEY=${APIKEY} ; \
+# 'apk --no-cache add --virtual build_dependencies \
+#     curl-dev \
+#     g++ \
+#     git \
+#     libcurl \
+#     make && \
+#     if [ $NONETWORKING -eq 0 ] ; then \
+#         echo "Building networking version" && \
 
-    fi && \
-    apk del build_dependencies'
+#         make -C /app/SimulationCraft/engine release -j $THREADS LTO=1 OPTS+="-Os -mtune=generic" SC_DEFAULT_APIKEY=${APIKEY} ;  \
+#     else \
+#         echo "Building no-networking version" && \
+#         make -C /app/SimulationCraft/engine release -j $THREADS LTO=1 SC_NO_NETWORKING=1 OPTS+="-Os -mtune=generic" SC_DEFAULT_APIKEY=${APIKEY} ; \
+
+#     fi && \
+#     apk del build_dependencies'
 
 # disable ptr to reduce build size
 # sed -i '' -e 's/#define SC_USE_PTR 1/#define SC_USE_PTR 0/g' engine/dbc.hpp
