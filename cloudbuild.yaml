@@ -1,16 +1,16 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: [ 'build', '--build-arg', 'APIKEY=$$BLZ_APIKEY', '--build-arg', 'THREADS=2', '-t', 'gcr.io/$PROJECT_ID/simc:$SHORT_SHA', '.' ]
-  secretEnv: ['BLZ_APIKEY']
+  args: [ 'build', '--build-arg', 'APIKEY=$_BLZ_APIKEY', '--build-arg', 'THREADS=2', '-t', 'gcr.io/$PROJECT_ID/simc:$SHORT_SHA', '.' ]
+  secretEnv: ['_BLZ_APIKEY']
 
 availableSecrets:
   secretManager:
   - versionName: projects/$_PROJECT_ID/secrets/BlzApiKey/versions/1
-    env: 'BLZ_APIKEY'
+    env: '_BLZ_APIKEY'
 
 artifacts:
   objects:
     location: 'gs://us.artifacts.stately-rampart-199708.appspot.com/'
     paths: ['engine/simc']
-substitutions:
-    _PROJECT_ID: $PROJECT_ID
+# substitutions:
+#     _PROJECT_ID: $PROJECT_ID
