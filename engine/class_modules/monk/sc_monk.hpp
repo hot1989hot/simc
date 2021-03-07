@@ -590,7 +590,7 @@ public:
 
     // Shadowland Legendary
     const spell_data_t* chi_explosion;
-    const spell_data_t* face_palm;
+    const spell_data_t* shaohaos_might;
     const spell_data_t* charred_passions_dmg;
   } passives;
 
@@ -690,7 +690,7 @@ public:
     item_runeforge_t jade_ignition;            // 7071
     item_runeforge_t keefers_skyreach;         // 7068
     item_runeforge_t last_emperors_capacitor;  // 7069
-    item_runeforge_t xuens_treasure;           // 7070
+    item_runeforge_t xuens_battlegear;         // 7070
   } legendary;
 
   struct pets_t

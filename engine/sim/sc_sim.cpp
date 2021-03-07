@@ -2492,6 +2492,13 @@ void sim_t::init_actor( player_t* p )
     // First, create all the action objects and set up action lists properly
     p -> create_actions();
 
+    // More initilization of class modules. Needed to create shared actions provided by a class.
+    for ( player_e i = PLAYER_NONE; i < PLAYER_MAX; ++i )
+    {
+      const module_t* m = module_t::get( i );
+      if ( m ) m -> create_actions( p );
+    }
+
     // Create persistent actors from dynamic spawners
     spawner::create_persistent_actors( *p );
 
@@ -3798,6 +3805,10 @@ void sim_t::create_options()
     shadowlands_opts.stone_legionnaires_in_party, 0, 4 ) );
   add_option( opt_uint( "shadowlands.crimson_choir_in_party",
     shadowlands_opts.crimson_choir_in_party, 0, 4 ) );
+  add_option( opt_timespan( "shadowlands.memory_of_past_sins_precast",
+    shadowlands_opts.memory_of_past_sins_precast, 0_s, 30_s ) );
+  add_option( opt_uint( "shadowlands.shattered_psyche_allies",
+    shadowlands_opts.shattered_psyche_allies, 0, 4 ) );
   add_option( opt_float( "shadowlands.judgment_of_the_arbiter_arc_chance",
     shadowlands_opts.judgment_of_the_arbiter_arc_chance, 0.0, 1.0 ) );
   add_option( opt_string( "shadowlands.volatile_solvent_type", shadowlands_opts.volatile_solvent_type ) );
@@ -3815,6 +3826,7 @@ void sim_t::create_options()
     shadowlands_opts.iqd_stat_fail_chance, 0.0, 1.0 ) );
   add_option( opt_float( "shadowlands.thrill_seeker_killing_blow_chance",
                          shadowlands_opts.thrill_seeker_killing_blow_chance, 0.0, 1.0 ) );
+  add_option( opt_float( "shadowlands.wild_hunt_tactics_duration_multiplier", shadowlands_opts.wild_hunt_tactics_duration_multiplier ) );
 }
 
 // sim_t::parse_option ======================================================

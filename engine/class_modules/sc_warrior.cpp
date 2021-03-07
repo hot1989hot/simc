@@ -145,6 +145,7 @@ public:
     // Covenant
     buff_t* conquerors_banner;
     buff_t* conquerors_frenzy;
+    buff_t* conquerors_mastery;
     buff_t* glory;
     // Conduits
     buff_t* ashen_juggernaut;
@@ -177,6 +178,7 @@ public:
     cooldown_t* execute;
     cooldown_t* heroic_leap;
     cooldown_t* iron_fortress_icd;
+    cooldown_t* impending_victory;
     cooldown_t* last_stand;
     cooldown_t* mortal_strike;
     cooldown_t* overpower;
@@ -188,7 +190,6 @@ public:
     cooldown_t* raging_blow;
     cooldown_t* crushing_blow;
     cooldown_t* ravager;
-    cooldown_t* revenge_reset;
     cooldown_t* shield_slam;
     cooldown_t* shield_wall;
     cooldown_t* shockwave;
@@ -588,7 +589,7 @@ public:
       azerite()
   {
     non_dps_mechanics =
-        false;  // When set to false, disables stuff that isn't important, such as second wind, bloodthirst heal, etc.
+        true;  // When set to false, disables stuff that isn't important, such as second wind, bloodthirst heal, etc.
     warrior_fixed_time    = true;
     into_the_fray_friends = -1;
     never_surrender_percentage = 70;
@@ -1158,7 +1159,7 @@ public:
 
     if ( ab::current_resource() == RESOURCE_RAGE && ab::last_resource_cost > 0 )
     {
-      if ( p()->covenant.conquerors_banner->ok() && p()->buff.conquerors_banner->check() )
+      if ( !p()->dbc->ptr && p()->covenant.conquerors_banner->ok() && p()->buff.conquerors_banner->check() )
       {
         p()->covenant.glory_counter += ab::last_resource_cost;
         double glory_threshold = p()->specialization() == WARRIOR_FURY ? 30 : 20;
@@ -1722,11 +1723,16 @@ struct mortal_strike_t : public warrior_attack_t
 
   double cost() const override
   {
+    if ( p()->buff.battlelord->check() )
+    {
+      if ( player->dbc->ptr )
+        return 15;
+      else
+        return 18;
+    }
+
     if ( from_mortal_combo )
       return 0;
-
-    if ( p()->buff.battlelord->check() )
-      return 15;
     return warrior_attack_t::cost();
   }
 
@@ -1866,7 +1872,7 @@ struct bladestorm_t : public warrior_attack_t
       torment_triggered( torment_triggered )
   {
     parse_options( options_str );
-    channeled = !torment_triggered;
+    channeled = false;
     tick_zero = true;
     callbacks = interrupt_auto_attack = false;
     travel_speed                      = 0;
@@ -1899,6 +1905,13 @@ struct bladestorm_t : public warrior_attack_t
     }
   }
 
+  timespan_t composite_dot_duration( const action_state_t* s ) const override
+  {
+    if ( torment_triggered )
+      return warrior_attack_t::composite_dot_duration( s );
+    return dot_duration * ( tick_time( s ) / base_tick_time );
+  }
+
   void execute() override
   {
     warrior_attack_t::execute();
@@ -1921,6 +1934,14 @@ struct bladestorm_t : public warrior_attack_t
 
   void tick( dot_t* d ) override
   {
+    // dont tick if BS buff not up
+    // since first tick is instant the buff won't be up yet
+    if ( d->ticks_left() < d->num_ticks() && !p()->buff.bladestorm->up() )
+    {
+      make_event( sim, [ d ] { d->cancel(); } );
+      return;
+    }
+
     if ( d->ticks_left() > 0 )
     {
       p()->buff.tornados_eye->trigger();
@@ -3002,14 +3023,19 @@ struct heroic_leap_t : public warrior_attack_t
   }
 };
 
-// Impending Victory ========================================================
+// Impending Victory Heal ========================================================
 
 struct impending_victory_heal_t : public warrior_heal_t
 {
-  impending_victory_heal_t( warrior_t* p ) : warrior_heal_t( "impending_victory_heal", p, p->find_spell( 118340 ) )
+  impending_victory_heal_t( warrior_t* p ) : warrior_heal_t( "impending_victory_heal", p, p->find_spell( 202166 ) )
   {
     base_pct_heal = data().effectN( 1 ).percent();
     background    = true;
+  }
+
+  proc_types proc_type() const override
+  {
+    return PROC1_NONE_HEAL;
   }
 
   resource_e current_resource() const override
@@ -3018,18 +3044,19 @@ struct impending_victory_heal_t : public warrior_heal_t
   }
 };
 
+// Impending Victory ==============================================================
+
 struct impending_victory_t : public warrior_attack_t
 {
   impending_victory_heal_t* impending_victory_heal;
   impending_victory_t( warrior_t* p, const std::string& options_str )
-    : warrior_attack_t( "impending_victory", p ), impending_victory_heal( nullptr )
+    : warrior_attack_t( "impending_victory", p, p->talents.impending_victory ), impending_victory_heal( nullptr )
   {
     parse_options( options_str );
     if ( p->non_dps_mechanics )
     {
       impending_victory_heal = new impending_victory_heal_t( p );
     }
-    parse_effect_data( data().effectN( 2 ) );  // Both spell effects list an ap coefficient, #2 is correct.
   }
 
   void execute() override
@@ -3615,10 +3642,12 @@ struct dreadnaught_t : warrior_attack_t
 };
 struct overpower_t : public warrior_attack_t
 {
+  double battlelord_chance;
   warrior_attack_t* seismic_wave;
   warrior_attack_t* dreadnaught;
   overpower_t( warrior_t* p, const std::string& options_str )
-    : warrior_attack_t( "overpower", p, p->spec.overpower ), seismic_wave( nullptr ), dreadnaught( nullptr )
+    : warrior_attack_t( "overpower", p, p->spec.overpower ), seismic_wave( nullptr ), dreadnaught( nullptr ),
+      battlelord_chance( p->legendary.battlelord->proc_chance() )
   {
     parse_options( options_str );
     may_block = may_parry = may_dodge = false;
@@ -3674,6 +3703,12 @@ struct overpower_t : public warrior_attack_t
   void execute() override
   {
     warrior_attack_t::execute();
+    if ( player->dbc->ptr && p()->legendary.battlelord->ok() && rng().roll( battlelord_chance ) )
+    {
+      p()->cooldown.mortal_strike->reset( true );
+      p() -> buff.battlelord -> trigger();
+    }
+
     p()->buff.overpower->trigger();
     p()->buff.striking_the_anvil->expire();
   }
@@ -3796,10 +3831,18 @@ struct rampage_attack_t : public warrior_attack_t
       {
         p()->resource_gain( RESOURCE_RAGE, rage_from_simmering_rage, p()->gain.simmering_rage );
       }
-      if ( p()->legendary.reckless_defense->ok() && target == s->target && execute_state->result == RESULT_CRIT
-      && rng().roll( reckless_defense_chance ) )
+      if ( p()->legendary.reckless_defense->ok() )
       {
-        p()->cooldown.recklessness->adjust( - timespan_t::from_seconds( p()->legendary.reckless_defense->effectN( 1 ).base_value() ) );
+        if ( !player->dbc->ptr && target == s->target && execute_state->result == RESULT_CRIT
+        && rng().roll( reckless_defense_chance ) )
+        {
+          p()->cooldown.recklessness->adjust( - timespan_t::from_seconds( p()->legendary.reckless_defense->effectN( 1 ).base_value() ) );
+        }
+        if ( player->dbc->ptr && target == s->target && execute_state->result == RESULT_HIT
+        && rng().roll( reckless_defense_chance ) )
+        {
+          p()->cooldown.recklessness->adjust( - timespan_t::from_seconds( p()->legendary.reckless_defense->effectN( 1 ).base_value() ) );
+        }
       }
     }
   }
@@ -3995,8 +4038,8 @@ struct ravager_t : public warrior_attack_t
   double torment_chance;
   bool torment_triggered;
   ravager_t( warrior_t* p, const std::string& options_str, util::string_view /* n */, const spell_data_t* /* spell */, bool torment_triggered = false )
-    : warrior_attack_t( "ravager", p, p->talents.ravager ),
-      ravager( new ravager_tick_t( p, "ravager_tick" ) ),
+    : warrior_attack_t( torment_triggered ? "ravager_torment" : "ravager", p, p->talents.ravager ),
+      ravager( new ravager_tick_t( p, torment_triggered ? "ravager_torment_tick" : "ravager_tick" ) ),
       mortal_strike( nullptr ),
       torment_chance( 0.5 * p->legendary.signet_of_tormented_kings->proc_chance() ),
       torment_triggered( torment_triggered )
@@ -4009,7 +4052,7 @@ struct ravager_t : public warrior_attack_t
     add_child( ravager );
     if ( p->legendary.unhinged->ok() )
     {
-      mortal_strike = new mortal_strike_unhinged_t( p, "ravager_mortal_strike" );
+      mortal_strike = new mortal_strike_unhinged_t( p, torment_triggered ? "mortal_strike_ravager_torment" : "mortal_strike_ravager" );
       add_child( mortal_strike );
     }
     // Vision of Perfection only reduces the cooldown for Arms
@@ -4022,6 +4065,19 @@ struct ravager_t : public warrior_attack_t
     {
       dot_duration = p->legendary.signet_of_tormented_kings->effectN( 4 ).time_value();
     }
+  }
+
+  timespan_t composite_dot_duration( const action_state_t* s ) const override
+  {
+    timespan_t tt = tick_time( s );
+
+    if ( torment_triggered )
+    {
+      int num_ticks = static_cast<int>( warrior_attack_t::composite_dot_duration( s ) / tt );
+      return num_ticks * tt;
+    }
+
+    return dot_duration * ( tt / base_tick_time );
   }
 
   void execute() override
@@ -4049,32 +4105,10 @@ struct ravager_t : public warrior_attack_t
 
   void tick( dot_t* d ) override
   {
-    // the ticks do scale with haste so I turned hasted_ticks on
-    // however this made it tick more than 6 times (2 with signet)
-    if ( torment_triggered && d->current_tick > 2 )
-      return;
-
-    else if ( d->current_tick > 6 )
-      return;
-
-    // the helm buff occurs before each tick
-    // it refreshes and adds one stack on the first 6 ticks
-    // only duration is refreshed on last tick, no stack is added
-    if ( d->current_tick <= 5 )
-    {
-      p()->buff.tornados_eye->trigger();
-      p()->buff.gathering_storm->trigger();
-    }
-    if ( d->current_tick == 6 )
-    {
-      p()->buff.tornados_eye->trigger( 0 );
-      p()->buff.gathering_storm->trigger( 0 );
-    }
     warrior_attack_t::tick( d );
     ravager->execute();
-    // the 4pc occurs on the first and 4th tick
-    // if (mortal_strike && (d->current_tick == 1 || d->current_tick == 4))
-    // As of 2017-12-05, this was hotfixed to only one tick total. Seems to be third one.
+    // proc occurs on the third tick
+    // cannot currently use alongside Signet - revisit if double legendary is added
     if ( mortal_strike && d->current_tick == 3 )
     {
       auto t = select_random_target();
@@ -4386,7 +4420,7 @@ struct slam_t : public warrior_attack_t
       {
         p()->buff.deadly_calm->decrement();
       }
-    if ( p()->legendary.battlelord->ok() && rng().roll( battlelord_chance ) )
+    if ( !player->dbc->ptr && p()->legendary.battlelord->ok() && rng().roll( battlelord_chance ) )
     {
       p()->cooldown.mortal_strike->reset( true );
       p() -> buff.battlelord -> trigger();
@@ -5241,7 +5275,6 @@ struct conquerors_banner_t : public warrior_spell_t
     : warrior_spell_t( "conquerors_banner", p, p->covenant.conquerors_banner )
   {
     parse_options( options_str );
-    callbacks  = false;
 
     harmful = false;
   }
@@ -5251,6 +5284,11 @@ struct conquerors_banner_t : public warrior_spell_t
     warrior_spell_t::execute();
 
     p()->buff.conquerors_banner->trigger();
+    if ( player->dbc->ptr )
+    {
+      p()->buff.conquerors_mastery->trigger();
+    }
+    else
     p()->buff.conquerors_frenzy->trigger();
     if ( p()->conduit.veterans_repute->ok() )
     {
@@ -6423,8 +6461,6 @@ void warrior_t::init_spells()
   cooldown.raging_blow                      = get_cooldown( "raging_blow" );
   cooldown.crushing_blow                    = get_cooldown( "raging_blow" );
   cooldown.ravager                          = get_cooldown( "ravager" );
-  cooldown.revenge_reset                    = get_cooldown( "revenge_reset" );
-  cooldown.revenge_reset->duration          = spec.revenge_trigger->internal_cooldown();
   cooldown.shield_slam                      = get_cooldown( "shield_slam" );
   cooldown.shield_wall                      = get_cooldown( "shield_wall" );
   cooldown.siegebreaker                     = get_cooldown( "siegebreaker" );
@@ -7105,7 +7141,9 @@ void warrior_t::create_buffs()
 
   buff.revenge =
       make_buff( this, "revenge", find_spell( 5302 ) )
-      ->set_default_value( find_spell( 5302 )->effectN( 1 ).percent() );
+      ->set_default_value( find_spell( 5302 )->effectN( 1 ).percent() )
+      ->set_trigger_spell( spec.revenge_trigger )
+      ->set_cooldown( spec.revenge_trigger -> internal_cooldown() );
 
   buff.avatar = make_buff( this, "avatar", spec.avatar_buff )
       ->set_chance(1)
@@ -7301,6 +7339,8 @@ void warrior_t::create_buffs()
   buff.conquerors_frenzy    = make_buff( this, "conquerors_frenzy", find_spell( 325862 ) )
                                ->set_default_value( find_spell( 325862 )->effectN( 2 ).percent() )
                                ->add_invalidate( CACHE_CRIT_CHANCE );
+
+  buff.conquerors_mastery = make_buff<stat_buff_t>( this, "conquerors_mastery", find_spell( 325862 ) );
 
   // Conduits===============================================================================================================
 
@@ -8213,11 +8253,7 @@ void warrior_t::assess_damage( school_e school, result_amount_type type, action_
 
   if ( s->result == RESULT_DODGE || s->result == RESULT_PARRY )
   {
-    if ( cooldown.revenge_reset->up() )
-    {
       buff.revenge->trigger();
-      cooldown.revenge_reset->start();
-    }
   }
 
   // Generate 3 Rage on auto-attack taken.
@@ -8671,8 +8707,10 @@ struct warrior_module_t : public module_t
   {
   }
 
-  void init( player_t* ) const override
+  void init( player_t* p ) const override
   {
+    if ( p->dbc->ptr )
+        p->buffs.conquerors_banner = make_buff<stat_buff_t>( p, "conquerors_banner_external", p -> find_spell( 325862 ) );
   }
   void combat_begin( sim_t* ) const override
   {

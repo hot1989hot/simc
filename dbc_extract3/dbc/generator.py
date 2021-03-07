@@ -1417,6 +1417,7 @@ class SpellDataGenerator(DataGenerator):
             ( 319190, 0 ),          # Shadow Vault shadow damage spell
             ( 345316, 0 ), ( 345390, 0 ), # Flagellation damage spells
             ( 185422, 0 ),          # Shadow Dance buff spell
+            ( 350964, 0 ),          # Subtlety-specific Deathly Shadows legendary buff
         ),
 
         # Priest:
@@ -1735,6 +1736,7 @@ class SpellDataGenerator(DataGenerator):
 
           # Shadowland Legendaries
           ( 337342, 3 ), # Jade Ignition Damage
+          ( 337482, 3 ), # Pressure Point BUff
           ( 338141, 1 ), # Flaming Kicks Legendary damage
           ( 343249, 0 ), # Escape from Reality Buff
           ( 343250, 0 ), # Escape from Reality
@@ -3415,15 +3417,9 @@ class RandomPropertyPointsGenerator(DataGenerator):
 
         for rpp in sorted(data, key = lambda e: e.id):
             fields = rpp.field('id', 'damage_replace_stat', 'damage_secondary')
-            fields += [ '{ %s }' % ', '.join(
-                rpp.field('epic_points_1', 'epic_points_2', 'epic_points_3',
-                          'epic_points_4', 'epic_points_5')) ]
-            fields += [ '{ %s }' % ', '.join(
-                rpp.field('rare_points_1', 'rare_points_2', 'rare_points_3',
-                          'rare_points_4', 'rare_points_5')) ]
-            fields += [ '{ %s }' % ', '.join(
-                rpp.field('uncm_points_1', 'uncm_points_2', 'uncm_points_3',
-                          'uncm_points_4', 'uncm_points_5')) ]
+            fields += [ '{ %s }' % ', '.join( rpp.field('epic_points_1', 'epic_points_2', 'epic_points_3', 'epic_points_4', 'epic_points_5')) ]
+            fields += [ '{ %s }' % ', '.join( rpp.field('rare_points_1', 'rare_points_2', 'rare_points_3', 'rare_points_4', 'rare_points_5')) ]
+            fields += [ '{ %s }' % ', '.join( rpp.field('uncm_points_1', 'uncm_points_2', 'uncm_points_3', 'uncm_points_4', 'uncm_points_5')) ]
 
             self.output_record(fields)
 

@@ -1,4 +1,4 @@
-SimulationCraft 902-01 for World of Warcraft 9.0.2.37176 Live (hotfix 2021-02-06/37176, no-networking)
+SimulationCraft 902-01 for World of Warcraft 9.0.2.37474 Live (hotfix 2021-02-08/37474, no-networking)
 
 Name             : Field of Blossoms (id=319191) [Passive, Hidden] 
 Hotfixed         : Attributes
@@ -759,7 +759,7 @@ Effects          :
 Description      : While out of combat, your Soulshape's teleport becomes a charge, stunning your target for $325321d and ending your Soulshape.
 
 Name             : Wild Hunt Tactics (id=325066) [Passive, Hidden] 
-Hotfixed         : Proc Flags (87312 -> 2446608), Attributes
+Hotfixed         : Attributes
 Covenant         : Night Fae
 Covenant         : Night Fae
 School           : Nature

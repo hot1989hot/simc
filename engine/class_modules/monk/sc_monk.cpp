@@ -981,7 +981,7 @@ struct tiger_palm_t : public monk_melee_attack_t
       am *= 1 + p()->buff.blackout_combo->data().effectN( 1 ).percent();
 
     if ( shaohoas_might )
-      am *= 1 + p()->passives.face_palm->effectN( 1 ).percent();
+      am *= 1 + p()->passives.shaohaos_might->effectN( 2 ).percent();
 
     return am;
   }
@@ -1042,7 +1042,7 @@ struct tiger_palm_t : public monk_melee_attack_t
           p()->buff.blackout_combo->expire();
 
         if ( shaohoas_might )
-          brew_cooldown_reduction( p()->passives.face_palm->effectN( 2 ).base_value() );
+          brew_cooldown_reduction( p()->passives.shaohaos_might->effectN( 3 ).base_value() );
         break;
       }
       default:
@@ -1166,8 +1166,8 @@ struct rising_sun_kick_dmg_t : public monk_melee_attack_t
           s->target->debuffs.mortal_wounds->trigger();
         }
 
-        if ( p()->legendary.xuens_treasure->ok() && ( s->result == RESULT_CRIT ) )
-          p()->cooldown.fists_of_fury->adjust( -1 * p()->legendary.xuens_treasure->effectN( 2 ).time_value() );
+        if ( p()->legendary.xuens_battlegear->ok() && ( s->result == RESULT_CRIT ) )
+          p()->cooldown.fists_of_fury->adjust( -1 * p()->legendary.xuens_battlegear->effectN( 2 ).time_value(), true );
 
         // Apply Mark of the Crane
         if ( p()->spec.spinning_crane_kick_2_ww->ok() )
@@ -1697,7 +1697,7 @@ struct spinning_crane_kick_t : public monk_melee_attack_t
     may_combo_strike = true;
 
     may_crit = may_miss = may_block = may_dodge = may_parry = callbacks = false;
-    tick_zero = hasted_ticks = interrupt_auto_attack = true;
+    tick_zero = hasted_ticks = channeled = interrupt_auto_attack = true;
 
     spell_power_mod.direct = 0.0;
     dot_behavior           = DOT_REFRESH;  // Spell uses Pandemic Mechanics.
@@ -1802,7 +1802,8 @@ struct fists_of_fury_tick_t : public monk_melee_attack_t
     : monk_melee_attack_t( name, p, p->passives.fists_of_fury_tick )
   {
     background = true;
-    aoe        = 1 + (int)p->spec.fists_of_fury->effectN( 1 ).base_value();
+    // Currently a bug where the it's a max of 5 targets; instead of primary + 5
+    aoe        = (int)p->spec.fists_of_fury->effectN( 1 ).base_value() + ( p->bugs ? 0 : 1 );
     ww_mastery = true;
 
     attack_power_mod.direct    = p->spec.fists_of_fury->effectN( 5 ).ap_coeff();
@@ -1910,7 +1911,7 @@ struct fists_of_fury_t : public monk_melee_attack_t
   {
     monk_melee_attack_t::last_tick( dot );
 
-    if ( p()->legendary.xuens_treasure->ok() )
+    if ( p()->legendary.xuens_battlegear->ok() )
       p()->buff.pressure_point->trigger();
   }
 };
@@ -1943,8 +1944,6 @@ struct whirling_dragon_punch_t : public monk_melee_attack_t
     parse_options( options_str );
     interrupt_auto_attack = callbacks = false;
     channeled                         = true;
-    dot_duration                      = data().duration();
-    tick_zero                         = false;
     may_combo_strike                  = true;
 
     spell_power_mod.direct = 0.0;
@@ -1964,8 +1963,10 @@ struct whirling_dragon_punch_t : public monk_melee_attack_t
 
   timespan_t composite_dot_duration( const action_state_t* s ) const override
   {
+    // WDP has an automatic "tick_on_application" flag set which is causing a tick zero application.
+    // have to set the duration at 2 ticks since the first of the 3 ticks happens at tick zero.
     timespan_t tt = tick_time( s );
-    return tt * 3;
+    return tt * 2;
   }
 };
 
@@ -2254,6 +2255,8 @@ struct touch_of_death_t : public monk_melee_attack_t
   touch_of_death_t( monk_t& p, util::string_view options_str )
     : monk_melee_attack_t( "touch_of_death", &p, p.spec.touch_of_death )
   {
+    if ( p.dbc->ptr )
+      ww_mastery              = true;
     may_crit = hasted_ticks = false;
     may_combo_strike        = true;
     parse_options( options_str );
@@ -3852,24 +3855,9 @@ struct fallen_order_t : public monk_spell_t
     std::vector<std::pair<specialization_e, timespan_t>> fallen_monks;
 
     // Monks alternate summoning primary spec and non-primary spec
-    // 11 summons in total (6 primary and a mix of 5 non-primary)
+    // 8 summons in total (4 primary and a mix of 4 non-primary)
     // for non-primary, there is a 50% chance one or the other non-primary is summoned
-    switch ( spec )
-    {
-      case MONK_WINDWALKER:
-        fallen_monks.push_back( std::make_pair( MONK_WINDWALKER, primary_duration ) );
-        break;
-      case MONK_BREWMASTER:
-        fallen_monks.push_back( std::make_pair( MONK_BREWMASTER, primary_duration ) );
-        break;
-      case MONK_MISTWEAVER:
-        fallen_monks.push_back( std::make_pair( MONK_MISTWEAVER, primary_duration ) );
-        break;
-      default:
-        break;
-    }
-
-    for ( int i = 0; i < 7; i++ )
+    for ( int i = 0; i < 8; i++ )
     {
       switch ( spec )
       {
@@ -3877,7 +3865,7 @@ struct fallen_order_t : public monk_spell_t
         {
           if ( i % 2 )
             fallen_monks.push_back( std::make_pair( MONK_WINDWALKER, primary_duration ) );
-          else if ( rng().roll( 0.75 ) )
+          else if ( rng().roll( 0.5 ) )
             fallen_monks.push_back( std::make_pair( MONK_BREWMASTER, summon_duration ) );
           else
             fallen_monks.push_back( std::make_pair( MONK_MISTWEAVER, summon_duration ) );
@@ -3887,7 +3875,7 @@ struct fallen_order_t : public monk_spell_t
         {
           if ( i % 2 )
             fallen_monks.push_back( std::make_pair( MONK_BREWMASTER, primary_duration ) );
-          else if ( rng().roll( 0.75 ) )
+          else if ( rng().roll( 0.5 ) )
             fallen_monks.push_back( std::make_pair( MONK_WINDWALKER, summon_duration ) );
           else
             fallen_monks.push_back( std::make_pair( MONK_MISTWEAVER, summon_duration ) );
@@ -3897,7 +3885,7 @@ struct fallen_order_t : public monk_spell_t
         {
           if ( i % 2 )
             fallen_monks.push_back( std::make_pair( MONK_MISTWEAVER, primary_duration ) );
-          else if ( rng().roll( 0.75 ) )
+          else if ( rng().roll( 0.5 ) )
             fallen_monks.push_back( std::make_pair( MONK_WINDWALKER, summon_duration ) );
           else
             fallen_monks.push_back( std::make_pair( MONK_BREWMASTER, summon_duration ) );
@@ -5855,7 +5843,7 @@ void monk_t::init_spells()
   legendary.jade_ignition           = find_runeforge_legendary( "Jade Ignition" );
   legendary.keefers_skyreach        = find_runeforge_legendary( "Keefer's Skyreach" );
   legendary.last_emperors_capacitor = find_runeforge_legendary( "Last Emperor's Capacitor" );
-  legendary.xuens_treasure          = find_runeforge_legendary( "Xuen's Treasure" );
+  legendary.xuens_battlegear        = find_runeforge_legendary( "Xuen's Treasure" );
 
   // Passives =========================================
   // General
@@ -5931,7 +5919,7 @@ void monk_t::init_spells()
 
   // Shadowland Legendary
   passives.chi_explosion        = find_spell( 337342 );
-  passives.face_palm            = find_spell( 227679 );
+  passives.shaohaos_might            = find_spell( 337570 );
   passives.charred_passions_dmg = find_spell( 338141 );
 
   // Mastery spells =========================================
@@ -6206,10 +6194,6 @@ void monk_t::create_buffs()
           ->set_can_cancel( false )  // Undocumented hotfix 28/09/2018 - SEF can no longer be canceled.
           ->set_cooldown( timespan_t::zero() );
 
-  buff.pressure_point = make_buff( this, "pressure_point", find_spell( 337481 ) )
-                            ->set_default_value_from_effect( 1 )
-                            ->set_refresh_behavior( buff_refresh_behavior::NONE );
-
   buff.touch_of_karma = new buffs::touch_of_karma_buff_t( *this, "touch_of_karma", find_spell( 125174 ) );
 
   buff.windwalking_driver = new buffs::windwalking_driver_t( *this, "windwalking_aura_driver", find_spell( 166646 ) );
@@ -6263,6 +6247,10 @@ void monk_t::create_buffs()
 
   // Windwalker
   buff.chi_energy = make_buff( this, "chi_energy", find_spell( 337571 ) )->set_default_value_from_effect( 1 );
+
+  buff.pressure_point = make_buff( this, "pressure_point", find_spell( 337482 ) )
+                            ->set_default_value_from_effect( 1 )
+                            ->set_refresh_behavior( buff_refresh_behavior::NONE );
 
   buff.the_emperors_capacitor =
       make_buff( this, "the_emperors_capacitor", find_spell( 337291 ) )->set_default_value_from_effect( 1 );

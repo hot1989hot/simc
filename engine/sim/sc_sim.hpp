@@ -355,6 +355,10 @@ struct sim_t : private sc_thread_t
     unsigned stone_legionnaires_in_party = 0;
     /// Number of Crimson Choir in party (Cabalist's Effigy trinket)
     unsigned crimson_choir_in_party = 0;
+    /// Seconds before combat to apply the Shattered Psyche buff to the player.
+    timespan_t memory_of_past_sins_precast = 0_s;
+    /// Number of allies applying Shattered Psyche stacks to the enemy.
+    unsigned shattered_psyche_allies = 0;
     /// Chance for each target to be hit by a Judgment of the Arbiter arc
     double judgment_of_the_arbiter_arc_chance = 0.0;
     /// Type of corpse used for Volatile Solvent. Accepts corpse type string or buff string
@@ -386,6 +390,8 @@ struct sim_t : private sc_thread_t
     /// Sets chance that the actor gets the killing blow when a target demises for Thrill Seeker stacks
     /// The default value of -1.0 adjusts to 1/20 for most sims, and 1/4 for DungeonSlice sims
     double thrill_seeker_killing_blow_chance = -1.0;
+    /// Percentage of default duration for the damage portion of Wild Hunt Tactics to use.
+    double wild_hunt_tactics_duration_multiplier = 1.0;
   } shadowlands_opts;
 
   // Auras and De-Buffs

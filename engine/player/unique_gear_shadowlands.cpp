@@ -701,7 +701,11 @@ void memory_of_past_sins( special_effect_t& effect )
     {
       double m = proc_spell_t::composite_target_da_multiplier( t );
       auto td = player->get_target_data( t );
-      m *= 1.0 + td->debuff.shattered_psyche->stack_value();
+
+      // Assume we get about half of the value from each application of the extra ally stacks (4 allies = 2 stacks on player's first hit, 22 stacks on player's last hit etc.)
+      int base_dmg_stacks = td->debuff.shattered_psyche->stack() * (player->sim->shadowlands_opts.shattered_psyche_allies + 1);
+      int bonus_dmg_stacks = player->sim->shadowlands_opts.shattered_psyche_allies / 2;
+      m *= 1.0 + ( base_dmg_stacks + bonus_dmg_stacks ) * td->debuff.shattered_psyche->check_value();
       return m;
     }
 
@@ -738,8 +742,9 @@ void memory_of_past_sins( special_effect_t& effect )
   auto buff = buff_t::find( effect.player, "shattered_psyche" );
   if ( !buff )
   {
-    buff = make_buff( effect.player, "shattered_psyche", effect.player->find_spell( 344662 ) );
+    buff = make_buff( effect.player, "shattered_psyche", effect.driver() );
     buff->set_initial_stack( buff->max_stack() );
+    buff->set_cooldown( 0_s );
   }
 
   action_t* damage = create_proc_action<shattered_psyche_damage_t>( "shattered_psyche", effect );
@@ -765,8 +770,20 @@ void memory_of_past_sins( special_effect_t& effect )
     else if ( new_ == 0 )
       callback->deactivate();
   } );
-}
 
+  timespan_t precast = effect.player->sim->shadowlands_opts.memory_of_past_sins_precast;
+  if (precast > 0_s) {
+    effect.player->register_combat_begin( [&effect, buff, precast]( player_t* ) {
+      buff->trigger( buff->buff_duration() - precast );
+
+      cooldown_t* cd = effect.player->get_cooldown( effect.cooldown_name() );
+      cd->start( effect.cooldown() - precast );
+
+      cooldown_t* group_cd = effect.player->get_cooldown( effect.cooldown_group_name());
+      group_cd->start(effect.cooldown_group_duration() - precast);
+    } );
+  }
+}
 
 
 /** Gluttonous spike
@@ -1409,6 +1426,8 @@ void inscrutable_quantum_device ( special_effect_t& effect )
   };
 
   effect.execute_action = create_proc_action<inscrutable_quantum_device_t>( "inscrutable_quantum_device", effect );
+  effect.disable_buff();
+  effect.stat = STAT_ALL;
 }
 
 void phial_of_putrefaction( special_effect_t& effect )
@@ -1866,6 +1885,33 @@ void rotbriar_sprout( special_effect_t& effect )
   new dbc_proc_callback_t( effect.player, effect );
 }
 
+// id=339343 driver, buff & debuff rating values
+// id=339342 buff
+// id=339341 debuff
+void murmurs_in_the_dark( special_effect_t& effect )
+{
+  auto debuff = buff_t::find( effect.player, "end_of_night" );
+  if ( !debuff )
+  {
+    debuff = make_buff<stat_buff_t>( effect.player, "end_of_night", effect.player->find_spell( 339341 ) )
+      ->add_stat( STAT_HASTE_RATING, effect.driver()->effectN( 2 ).average( effect.item ) );
+  }
+
+  auto buff = buff_t::find( effect.player, "fall_of_night" );
+  if ( !buff )
+  {
+    buff = make_buff<stat_buff_t>( effect.player, "fall_of_night", effect.player->find_spell( 339342 ) )
+      ->add_stat( STAT_HASTE_RATING, effect.driver()->effectN( 1 ).average( effect.item ) )
+      ->set_stack_change_callback( [ debuff ]( buff_t*, int, int new_ ) {
+        if ( !new_ )
+          debuff->trigger();
+      } );
+  }
+
+  effect.custom_buff = buff;
+  new dbc_proc_callback_t( effect.player, effect );
+}
+
 // Runecarves
 
 void echo_of_eonar( special_effect_t& effect )
@@ -2060,6 +2106,7 @@ void register_special_effects()
     unique_gear::register_special_effect( 329831, items::overwhelming_power_crystal );
     unique_gear::register_special_effect( 336182, items::tablet_of_despair );
     unique_gear::register_special_effect( 329536, items::rotbriar_sprout );
+    unique_gear::register_special_effect( 339343, items::murmurs_in_the_dark );
 
     // Runecarves
     unique_gear::register_special_effect( 338477, items::echo_of_eonar );

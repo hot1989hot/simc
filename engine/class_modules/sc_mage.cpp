@@ -1235,7 +1235,8 @@ struct mirrors_of_torment_t final : public buff_t
     switch ( p->specialization() )
     {
       case MAGE_ARCANE:
-        mana_pct = p->find_spell( 345417 )->effectN( 1 ).percent();
+        if ( !p->dbc->ptr )
+          mana_pct = p->find_spell( 345417 )->effectN( 1 ).percent();
         break;
       case MAGE_FIRE:
         reduction = -1000 * data().effectN( 2 ).time_value();
@@ -1270,7 +1271,10 @@ struct mirrors_of_torment_t final : public buff_t
       switch ( p->specialization() )
       {
         case MAGE_ARCANE:
-          p->resource_gain( RESOURCE_MANA, p->resources.max[ RESOURCE_MANA ] * mana_pct, p->gains.mirrors_of_torment );
+          if ( p->dbc->ptr )
+            p->trigger_delayed_buff( p->buffs.clearcasting, 1.0, 0_ms );
+          else
+            p->resource_gain( RESOURCE_MANA, p->resources.max[ RESOURCE_MANA ] * mana_pct, p->gains.mirrors_of_torment );
           break;
         case MAGE_FIRE:
           p->cooldowns.fire_blast->adjust( reduction );
@@ -4317,7 +4321,7 @@ struct living_bomb_t final : public fire_mage_spell_t
 
 // Meteor Spell =============================================================
 
-// Implementation details from Celestalon:
+// Old implementation details from Celestalon:
 // http://blue.mmo-champion.com/topic/318876-warlords-of-draenor-theorycraft-discussion/#post301
 // Meteor is split over a number of spell IDs
 // - Meteor (id=153561) is the talent spell, the driver
@@ -4325,6 +4329,9 @@ struct living_bomb_t final : public fire_mage_spell_t
 // - Meteor Burn (id=155158) is the ground effect tick damage
 // - Meteor Burn (id=175396) provides the tooltip's burn duration
 // - Meteor (id=177345) contains the time between cast and impact
+// 2021-02-23 PTR: Meteor now snapshots damage on impact.
+// - time until impact is unchanged.
+// - Meteor (id=351140) is the new initial impact damage.
 struct meteor_burn_t final : public fire_mage_spell_t
 {
   meteor_burn_t( util::string_view n, mage_t* p ) :
@@ -4350,7 +4357,7 @@ struct meteor_impact_t final : public fire_mage_spell_t
   timespan_t meteor_burn_pulse_time;
 
   meteor_impact_t( util::string_view n, mage_t* p, action_t* burn ) :
-    fire_mage_spell_t( n, p, p->find_spell( 153564 ) ),
+    fire_mage_spell_t( n, p, p->dbc->ptr ? p->find_spell( 351140 ) : p->find_spell( 153564 ) ),
     meteor_burn( burn ),
     meteor_burn_duration( p->find_spell( 175396 )->duration() ),
     meteor_burn_pulse_time( p->find_spell( 155158 )->effectN( 1 ).period() )
@@ -4407,6 +4414,10 @@ struct meteor_t final : public fire_mage_spell_t
   timespan_t travel_time() const override
   {
     timespan_t impact_time = meteor_delay * p()->cache.spell_speed();
+    if ( p()->dbc->ptr )
+      // Travel time cannot go lower than 1 second to give time for Meteor to visually fall.
+      return std::max( impact_time, 1_s );
+
     timespan_t meteor_spawn = impact_time - impact_action->travel_time();
     return std::max( meteor_spawn, 0_ms );
   }

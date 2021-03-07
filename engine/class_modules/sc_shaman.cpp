@@ -3418,7 +3418,7 @@ struct stormstrike_base_t : public shaman_attack_t
 
     p()->buff.gathering_storms->decrement();
 
-    if ( p()->talent.elemental_assault->ok() )
+    if ( p()->talent.elemental_assault->ok() && !stormflurry )
     {
       p()->buff.maelstrom_weapon->trigger(
         p()->talent.elemental_assault->effectN( 2 ).base_value() );
@@ -3531,7 +3531,7 @@ struct ice_strike_t : public shaman_attack_t
   {
     shaman_attack_t::init();
 
-    may_proc_stormbringer = may_proc_flametongue = false;
+    may_proc_flametongue = false;
   }
 
   void execute() override
@@ -4055,6 +4055,16 @@ struct chain_lightning_t : public chained_base_t
     return m;
   }
 
+  bool benefit_from_maelstrom_weapon() const override
+  {
+    if ( p()->dbc->ptr && p()->buff.stormkeeper->check() )
+    {
+      return false;
+    }
+
+    return shaman_spell_t::benefit_from_maelstrom_weapon();
+  }
+
   // If Stormkeeper is up, Chain Lightning will not consume Maelstrom Weapon stacks, but
   // will allow Chain Lightning to fully benefit from the stacks.
   bool consume_maelstrom_weapon() const override
@@ -4073,7 +4083,7 @@ struct chain_lightning_t : public chained_base_t
 
     t *= 1.0 + p()->buff.wind_gust->stack_value();
 
-    if ( p()->buff.stormkeeper->up() )
+    if ( !p()->dbc->ptr && p()->buff.stormkeeper->up() )
     {
       // stormkeeper has a -100% value as effect 1
       t *= 1 + p()->talent.stormkeeper->effectN( 1 ).percent();
@@ -4139,7 +4149,7 @@ struct chain_lightning_t : public chained_base_t
       }
     }
 
-    if ( num_targets_hit && p()->specialization() == SHAMAN_ENHANCEMENT )
+    if ( num_targets_hit - 1 > 0 && p()->specialization() == SHAMAN_ENHANCEMENT )
     {
       p()->buff.cl_crash_lightning->trigger( num_targets_hit );
     }
@@ -4857,9 +4867,15 @@ struct lightning_bolt_t : public shaman_spell_t
   double action_multiplier() const override
   {
     double m = shaman_spell_t::action_multiplier();
-    if ( p()->buff.stormkeeper->up() )
+    if ( p()->buff.stormkeeper->up() &&
+         ( !p()->dbc->ptr || p()->specialization() == SHAMAN_ELEMENTAL ) )
     {
       m *= 1.0 + p()->talent.stormkeeper->effectN( 2 ).percent();
+    }
+
+    if ( p()->buff.primordial_wave->check() && p()->specialization() == SHAMAN_ENHANCEMENT )
+    {
+      m *= p()->covenant.necrolord->effectN( 4 ).percent();
     }
 
     return m;
@@ -4867,7 +4883,8 @@ struct lightning_bolt_t : public shaman_spell_t
 
   timespan_t execute_time() const override
   {
-    if ( p()->buff.stormkeeper->up() )
+    if ( p()->buff.stormkeeper->up() &&
+         ( !p()->dbc->ptr || p()->specialization() == SHAMAN_ELEMENTAL ) )
     {
       return timespan_t::zero();
     }
@@ -4895,12 +4912,12 @@ struct lightning_bolt_t : public shaman_spell_t
     if ( p()->specialization() == SHAMAN_ENHANCEMENT &&
          type == lightning_bolt_type::NORMAL && p()->buff.primordial_wave->up() )
     {
-      p()->buff.primordial_wave->expire();
       p()->action.lightning_bolt_pw->set_target( target );
       if ( !p()->action.lightning_bolt_pw->target_list().empty() )
       {
         p()->action.lightning_bolt_pw->execute();
       }
+      p()->buff.primordial_wave->expire();
     }
 
     shaman_spell_t::execute();
@@ -4922,7 +4939,8 @@ struct lightning_bolt_t : public shaman_spell_t
       }
     }
 
-    if ( type == lightning_bolt_type::NORMAL )
+    if ( type == lightning_bolt_type::NORMAL &&
+         ( !p()->dbc->ptr || p()->specialization() == SHAMAN_ELEMENTAL ) )
     {
       p()->buff.stormkeeper->decrement();
     }
@@ -5123,7 +5141,19 @@ struct earthquake_damage_t : public shaman_spell_t
     aoe        = -1;
     ground_aoe = background = true;
     school                  = SCHOOL_PHYSICAL;
-    spell_power_mod.direct  = 0.23;  // still cool to hardcode the SP% into tooltip
+
+    // Earthquake modifier is hardcoded rather than using effects, so we set the modifier here
+    if ( player->dbc->ptr )
+    {
+      // TODO: remove this conditional once 9.0.5 is live
+      // PTR for 9.0.5 buffed EQ by 70%,
+      // https://us.forums.blizzard.com/en/wow/t/905-ptr-changes-updated-february-23/875072/1
+      spell_power_mod.direct = 0.391;
+    }
+    else
+    {
+      spell_power_mod.direct = 0.23;
+    }
   }
 
   double composite_target_armor( player_t* ) const override
@@ -6636,6 +6666,11 @@ struct chain_harvest_t : public shaman_spell_t
     parse_options( options_str );
     aoe = 5;
     spell_power_mod.direct = player->find_spell( 320752 )->effectN( 1 ).sp_coeff();
+
+    if ( player->dbc->ptr )
+    {
+      base_multiplier *= 1.0 + player->spec.elemental_shaman->effectN( 7 ).percent();
+    }
 
     base_crit += p()->conduit.lavish_harvest.percent();
   }
@@ -8885,6 +8920,7 @@ void shaman_t::init_action_list_enhancement()
   def->add_action( "call_action_list,name=aoe,if=active_enemies>1", "On multiple enemies, the priority follows the 'aoe' action list." );
 
   single->add_action("windstrike");
+  single->add_action(this, "Lava Lash", "if=buff.hot_hand.up|(runeforge.primal_lava_actuators.equipped&buff.primal_lava_actuators.stack>6)");
   single->add_action("primordial_wave,if=!buff.primordial_wave.up");
   single->add_action(this, "Stormstrike", "if=runeforge.doom_winds.equipped&buff.doom_winds.up");
   single->add_action(this, "Crash Lightning", "if=runeforge.doom_winds.equipped&buff.doom_winds.up");
@@ -8895,11 +8931,10 @@ void shaman_t::init_action_list_enhancement()
   single->add_action(this, "Frost Shock", "if=buff.hailstorm.up");
   single->add_talent(this, "Earthen Spike");
   single->add_action("fae_transfusion");
-  single->add_action(this, "Lightning Bolt", "if=buff.stormkeeper.up");
+  single->add_action(this, "Chain Lightning", "if=buff.stormkeeper.up");
   single->add_talent(this, "Elemental Blast", "if=buff.maelstrom_weapon.stack>=5");
   single->add_action("chain_harvest,if=buff.maelstrom_weapon.stack>=5&raid_event.adds.in>=90");
   single->add_action(this, "Lightning Bolt", "if=buff.maelstrom_weapon.stack=10");
-  single->add_action(this, "Lava Lash", "if=buff.hot_hand.up|(runeforge.primal_lava_actuators.equipped&buff.primal_lava_actuators.stack>6)");
   single->add_action(this, "Stormstrike");
   single->add_talent(this, "Stormkeeper", "if=buff.maelstrom_weapon.stack>=5");
   single->add_action(this, "Lava Lash");
@@ -8925,6 +8960,7 @@ void shaman_t::init_action_list_enhancement()
   aoe->add_action(this, "Lightning Bolt", "if=buff.primordial_wave.up&(buff.stormkeeper.up|buff.maelstrom_weapon.stack>=5)");
   aoe->add_action(this, "Crash Lightning", "if=talent.crashing_storm.enabled|buff.crash_lightning.down");
   aoe->add_action(this, "Lava Lash", "target_if=min:debuff.lashing_flames.remains,cycle_targets=1,if=talent.lashing_flames.enabled");
+  aoe->add_action(this, "Lava Lash," "if=buff.crash_lightning.up&buff.hot_hand.up");
   aoe->add_action(this, "Stormstrike", "if=buff.crash_lightning.up");
   aoe->add_action(this, "Crash Lightning");
   aoe->add_action(this, "Chain Lightning", "if=buff.stormkeeper.up");
@@ -9866,6 +9902,12 @@ struct shaman_module_t : public module_t
 
   void register_hotfixes() const override
   {
+    hotfix::register_effect( "Shaman", "2021-02-24", "Chain Lightning Spell Power Modifier was accidentally missed",
+                             275203, hotfix::HOTFIX_FLAG_PTR )
+        .field( "sp_coefficient" )
+        .operation( hotfix::HOTFIX_SET )
+        .modifier( 0.635 )
+        .verification_value( 0.47 );
   }
 
   void combat_begin( sim_t* ) const override

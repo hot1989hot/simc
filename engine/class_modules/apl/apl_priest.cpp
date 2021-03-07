@@ -14,11 +14,9 @@ namespace priest_apl
 {
 std::string potion( const player_t* p )
 {
-  std::string lvl60_potion =
-      ( p->specialization() == PRIEST_SHADOW ) ? "potion_of_phantom_fire" : "potion_of_spectral_intellect";
   std::string lvl50_potion = ( p->specialization() == PRIEST_SHADOW ) ? "unbridled_fury" : "battle_potion_of_intellect";
 
-  return ( p->true_level > 50 ) ? lvl60_potion : lvl50_potion;
+  return ( p->true_level > 50 ) ? "potion_of_spectral_intellect" : lvl50_potion;
 }
 
 std::string flask( const player_t* p )
@@ -195,8 +193,9 @@ void shadow( player_t* p )
                     "searing_nightmare_cutoff)&!cooldown.fiend.up&(!cooldown.mind_blast.up|spell_targets.mind_sear>2)",
                     "Use Void Eruption on cooldown pooling at least 40 insanity but not if you will overcap insanity "
                     "in VF. Make sure shadowfiend/mindbender and Mind Blast is on cooldown before VE." );
-  main->add_action( p, "Shadow Word: Pain", "if=buff.fae_guardians.up&!debuff.wrathful_faerie.up",
-                    "Make sure you put up SW:P ASAP on the target if Wrathful Faerie isn't active." );
+  main->add_action(
+      p, "Shadow Word: Pain", "if=buff.fae_guardians.up&!debuff.wrathful_faerie.up&spell_targets.mind_sear<4",
+      "Make sure you put up SW:P ASAP on the target if Wrathful Faerie isn't active when fighting 1-3 targets." );
   main->add_call_action_list( cds );
   main->add_action( p, "Mind Sear",
                     "target_if=talent.searing_nightmare.enabled&spell_targets.mind_sear>variable.mind_sear_cutoff&!dot."
@@ -233,7 +232,8 @@ void shadow( player_t* p )
                     "Use Void Torrent only if SW:P and VT are active and the target won't die during the channel." );
   main->add_talent( p, "Mindbender",
                     "if=dot.vampiric_touch.ticking&(talent.searing_nightmare.enabled&spell_targets.mind_sear>variable."
-                    "mind_sear_cutoff|dot.shadow_word_pain.ticking)" );
+                    "mind_sear_cutoff|dot.shadow_word_pain.ticking)&(!runeforge.shadowflame_prism.equipped|active_dot."
+                    "vampiric_touch==spell_targets.vampiric_touch)" );
   main->add_action(
       p, "Shadow Word: Death",
       "if=runeforge.painbreaker_psalm.equipped&variable.dots_up&target.time_to_pct_20>(cooldown.shadow_word_death."
@@ -253,10 +253,10 @@ void shadow( player_t* p )
                     "Use Mind Flay to consume Dark Thoughts procs on ST. TODO Confirm if this is a higher priority "
                     "than redotting unless dark thoughts is about to time out" );
   main->add_action( p, "Mind Blast",
-                    "if=variable.dots_up&raid_event.movement.in>cast_time+0.5&(spell_targets.mind_sear<4&!talent."
-                    "misery.enabled|spell_targets.mind_sear<6&talent.misery.enabled)",
+                    "if=variable.dots_up&raid_event.movement.in>cast_time+0.5&spell_targets.mind_sear<(4+2*talent."
+                    "misery.enabled+active_dot.vampiric_touch*talent.psychic_link.enabled)",
                     "Use Mind Blast if you don't need to refresh DoTs. Stop casting at 4 or more targets with Searing "
-                    "Nightmare talented." );
+                    "Nightmare talented and you are not using Shadowflame Prism or Psychic Link." );
   main->add_action( p, "Vampiric Touch",
                     "target_if=refreshable&target.time_to_die>6|(talent.misery.enabled&dot.shadow_word_pain."
                     "refreshable)|buff.unfurling_darkness.up" );
