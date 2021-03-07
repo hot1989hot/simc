@@ -8,10 +8,10 @@ steps:
 #   secretEnv: ['BLZ_APIKEY']
 
 - name: 'gcr.io/$PROJECT_ID/simcbuilder'
-  entrypoint: 'bash'
+  entrypoint: '/bin/ash'
   args: ['-c', 'make -C ./engine release -j ${_THREADS} LTO=1 OPTS+="-Os -mtune=generic" SC_DEFAULT_APIKEY=$$BLZ_APIKEY']
   secretEnv: ['BLZ_APIKEY']
-  
+
 availableSecrets:
   secretManager:
   - versionName: projects/$PROJECT_ID/secrets/BlzApiKey/versions/1
