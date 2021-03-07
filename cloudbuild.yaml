@@ -1,13 +1,14 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: [ 'build', '--build-arg', 'APIKEY=$$_BLZ_APIKEY', '--build-arg', 'THREADS=2', '-t', 'gcr.io/$PROJECT_ID/simc:$SHORT_SHA', '.' ]
-  secretEnv: ['_BLZ_APIKEY']
+  entrypoint: 'bash'
+  args: [ '-c','docker', 'build', '--build-arg', 'APIKEY=$$BLZ_APIKEY', '--build-arg', 'THREADS=2', '-t', 'gcr.io/$PROJECT_ID/simc:$SHORT_SHA', '.' ]
+  secretEnv: ['BLZ_APIKEY']
   timeout: 3600s
 
 availableSecrets:
   secretManager:
   - versionName: projects/$PROJECT_ID/secrets/BlzApiKey/versions/1
-    env: '_BLZ_APIKEY'
+    env: 'BLZ_APIKEY'
 
 artifacts:
   objects:
