@@ -1,19 +1,21 @@
 steps:
+# - name: 'gcr.io/cloud-builders/docker'
+#   entrypoint: 'bash'
+#   args: [ '-c', 'docker build --build-arg APIKEY=$$BLZ_APIKEY --build-arg THREADS=2 -t gcr.io/$PROJECT_ID/simc:latest .' ]
+#   secretEnv: ['BLZ_APIKEY']
+
+# availableSecrets:
+#   secretManager:
+#   - versionName: projects/$PROJECT_ID/secrets/BlzApiKey/versions/1
+#     env: 'BLZ_APIKEY'
+
 - name: 'gcr.io/cloud-builders/docker'
-  entrypoint: 'bash'
-  args: [ '-c', 'docker build --build-arg APIKEY=$$BLZ_APIKEY --build-arg THREADS=2 -t gcr.io/$PROJECT_ID/simc:latest .' ]
-  secretEnv: ['BLZ_APIKEY']
-
-availableSecrets:
-  secretManager:
-  - versionName: projects/$PROJECT_ID/secrets/BlzApiKey/versions/1
-    env: 'BLZ_APIKEY'
-
+  args: ['pull', 'gcr.io/$PROJECT_ID/simc:latest']
 artifacts:
   objects:
     location: 'gs://us.artifacts.stately-rampart-199708.appspot.com/binary/'
-    paths: ['./engine/simc']
+    paths: ['/app/SimulationCraft/engine/simc']
 
-images: ['gcr.io/$PROJECT_ID/simc:latest']
+# images: ['gcr.io/$PROJECT_ID/simc:latest']
 
 timeout: 1800s
