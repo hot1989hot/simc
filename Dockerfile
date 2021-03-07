@@ -27,7 +27,7 @@ FROM alpine:latest AS build
 
 ARG THREADS=1
 ARG NONETWORKING=0
-ARG APIKEY=''
+ARG APIKEY
 
 COPY . /app/SimulationCraft/
 
