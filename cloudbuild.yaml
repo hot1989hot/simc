@@ -3,7 +3,6 @@ steps:
   entrypoint: 'bash'
   args: [ '-c','docker', 'build', '--build-arg', 'APIKEY=$$BLZ_APIKEY', '--build-arg', 'THREADS=2', '-t', 'gcr.io/$PROJECT_ID/simc:$SHORT_SHA', '.' ]
   secretEnv: ['BLZ_APIKEY']
-  timeout: 3600s
 
 availableSecrets:
   secretManager:
@@ -14,3 +13,5 @@ artifacts:
   objects:
     location: 'gs://us.artifacts.stately-rampart-199708.appspot.com/'
     paths: ['engine/simc']
+
+timeout: 3600s
