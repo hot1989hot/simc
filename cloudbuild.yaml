@@ -10,6 +10,8 @@ availableSecrets:
   - versionName: projects/$PROJECT_ID/secrets/BlzApiKey/versions/1
     env: 'BLZ_APIKEY'
 
+images: ['gcr.io/$PROJECT_ID/simc:$SHORT_SHA']
+
 artifacts:
   objects:
     location: 'gs://us.artifacts.stately-rampart-199708.appspot.com/'
