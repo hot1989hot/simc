@@ -32,7 +32,7 @@ ARG APIKEY
 COPY . /app/SimulationCraft/
 
 # install SimulationCraft
-RUN apk --no-cache add --virtual build_dependencies \
+RUN 'apk --no-cache add --virtual build_dependencies \
     curl-dev \
     g++ \
     git \
@@ -47,7 +47,7 @@ RUN apk --no-cache add --virtual build_dependencies \
         make -C /app/SimulationCraft/engine release -j $THREADS LTO=1 SC_NO_NETWORKING=1 OPTS+="-Os -mtune=generic" SC_DEFAULT_APIKEY=${APIKEY} ; \
 
     fi && \
-    apk del build_dependencies
+    apk del build_dependencies'
 
 # disable ptr to reduce build size
 # sed -i '' -e 's/#define SC_USE_PTR 1/#define SC_USE_PTR 0/g' engine/dbc.hpp
