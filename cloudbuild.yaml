@@ -5,10 +5,12 @@ steps:
 
 availableSecrets:
   secretManager:
-  - versionName: projects/$PROJECT_ID/secrets/BlzApiKey/versions/1
+  - versionName: projects/$_PROJECT_ID/secrets/BlzApiKey/versions/1
     env: 'BLZ_APIKEY'
 
 artifacts:
   objects:
     location: 'gs://us.artifacts.stately-rampart-199708.appspot.com/'
     paths: ['engine/simc']
+substitutions:
+    _PROJECT_ID: $PROJECT_ID
