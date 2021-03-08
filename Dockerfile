@@ -36,7 +36,7 @@ FROM alpine:latest AS build
 # RUN echo ${APIKEY}
 
 # install SimulationCraft
-RUN apk --no-cache add --virtual build_dependencies \
+RUN apk --no-cache add \
     curl-dev \
     g++ \
     git \

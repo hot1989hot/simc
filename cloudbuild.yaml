@@ -9,7 +9,7 @@ steps:
 
 - name: 'gcr.io/$PROJECT_ID/simcbuilder'
   entrypoint: '/bin/ash'
-  args: ['-c', 'make -C ./engine release -j ${_THREADS} LTO=1 OPTS+="-Os -mtune=generic" SC_DEFAULT_APIKEY=$$BLZ_APIKEY']
+  args: ['-c', 'make -C ./engine optimized -j ${_THREADS} SC_DEFAULT_APIKEY=$$BLZ_APIKEY']
   secretEnv: ['BLZ_APIKEY']
 
 availableSecrets:
@@ -18,7 +18,7 @@ availableSecrets:
     env: 'BLZ_APIKEY'
 
 substitutions:
-    _THREADS: '2'
+    _THREADS: '1'
 
 artifacts:
   objects:
