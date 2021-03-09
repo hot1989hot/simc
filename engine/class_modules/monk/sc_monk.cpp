@@ -408,11 +408,11 @@ public:
       }
     }
 
+    ab::impact( s );
+
     p()->trigger_empowered_tiger_lightning( s );
 
     p()->trigger_bonedust_brew( s );
-
-    ab::impact( s );
   }
 
   void trigger_storm_earth_and_fire( const action_t* a )
@@ -946,6 +946,20 @@ struct eye_of_the_tiger_heal_tick_t : public monk_heal_t
     may_crit = tick_may_crit = true;
     target                   = player;
   }
+
+  double action_multiplier() const override
+  {
+    double am = monk_heal_t::action_multiplier();
+
+    if ( p()->buff.storm_earth_and_fire->up() )
+    {
+      // Hard code Patch 9.0.5
+      // Eye of the Tiger's heal is now increased by 35% when Storm, Earth, and Fire is out
+      am *= ( 1 + p()->spec.storm_earth_and_fire->effectN( 1 ).percent() ) * 3; // Results in 135%
+    }
+    
+    return am;
+  }
 };
 
 struct eye_of_the_tiger_dmg_tick_t : public monk_spell_t
@@ -958,6 +972,20 @@ struct eye_of_the_tiger_dmg_tick_t : public monk_spell_t
     may_crit = tick_may_crit = true;
     attack_power_mod.direct  = 0;
     attack_power_mod.tick    = data().effectN( 2 ).ap_coeff();
+  }
+
+  double action_multiplier() const override
+  {
+    double am = monk_spell_t::action_multiplier();
+
+    if ( p()->buff.storm_earth_and_fire->up() )
+    {
+      // Hard code Patch 9.0.5
+      // Eye of the Tiger's damage is now increased by 35% when Storm, Earth, and Fire is out
+      am *= ( 1 + p()->spec.storm_earth_and_fire->effectN( 1 ).percent() ) * 3;  // Results in 135%
+    }
+
+    return am;
   }
 };
 
@@ -1226,6 +1254,9 @@ struct rising_sun_kick_t : public monk_melee_attack_t
     if ( p()->buff.weapons_of_order_ww->up() )
       c += p()->buff.weapons_of_order_ww->value();  // saved as -1
 
+    if ( c < 0 )
+      c = 0;
+
     return c;
   }
 
@@ -1237,7 +1268,7 @@ struct rising_sun_kick_t : public monk_melee_attack_t
     if ( p()->buff.serenity->up() )
     {
       if ( p()->buff.weapons_of_order_ww->up() )
-        p()->gain.serenity->add( RESOURCE_CHI, base_costs[ RESOURCE_CHI ] - p()->buff.weapons_of_order_ww->value() );
+        p()->gain.serenity->add( RESOURCE_CHI, base_costs[ RESOURCE_CHI ] + p()->buff.weapons_of_order_ww->value() );
       else
         p()->gain.serenity->add( RESOURCE_CHI, base_costs[ RESOURCE_CHI ] );
     }
@@ -1396,7 +1427,7 @@ struct blackout_kick_t : public monk_melee_attack_t
     if ( p()->buff.weapons_of_order_ww->up() )
       c += p()->buff.weapons_of_order_ww->value();
 
-    if ( c <= 0 )
+    if ( c < 0 )
       return 0;
 
     return c;
@@ -1410,7 +1441,7 @@ struct blackout_kick_t : public monk_melee_attack_t
     if ( p()->buff.serenity->up() )
     {
       if ( p()->buff.weapons_of_order_ww->up() )
-        p()->gain.serenity->add( RESOURCE_CHI, base_costs[ RESOURCE_CHI ] - p()->buff.weapons_of_order_ww->value() );
+        p()->gain.serenity->add( RESOURCE_CHI, base_costs[ RESOURCE_CHI ] + p()->buff.weapons_of_order_ww->value() );
       else
         p()->gain.serenity->add( RESOURCE_CHI, base_costs[ RESOURCE_CHI ] );
     }
@@ -1460,7 +1491,7 @@ struct blackout_kick_t : public monk_melee_attack_t
             cd_reduction += ( -1 * p()->covenant.kyrian->effectN( 8 ).time_value() );
 
           // Reduction is getting halved during Serenity
-          if ( p()->buff.serenity->up() )
+          if ( p()->buff.serenity->up() && !p()->bugs )
             cd_reduction *= 1.0 / ( 1 + p()->talent.serenity->effectN( 4 ).percent() );
 
           p()->cooldown.rising_sun_kick->adjust( cd_reduction, true );
@@ -1638,10 +1669,19 @@ struct sck_tick_action_t : public monk_melee_attack_t
 
     if ( p()->specialization() == MONK_WINDWALKER )
     {
-      for ( player_t* target : targets )
+      // Current bug has Mark of the Crane not count non-primary MotC debuffs
+      if ( p()->bugs )
       {
-        if ( td( target )->debuff.mark_of_the_crane->up() )
-          mark_of_the_crane_counter++;
+        if ( td( p()->target )->debuff.mark_of_the_crane->up() )
+          mark_of_the_crane_counter = 1;
+      }
+      else
+      {
+        for ( player_t* target : targets )
+        {
+          if ( td( target )->debuff.mark_of_the_crane->up() )
+            mark_of_the_crane_counter++;
+        }
       }
     }
     return mark_of_the_crane_counter;
@@ -1761,10 +1801,10 @@ struct spinning_crane_kick_t : public monk_melee_attack_t
       double cost = base_costs[ RESOURCE_CHI ];
 
       if ( p()->buff.weapons_of_order_ww->up() )
-        cost -= p()->buff.weapons_of_order_ww->value();
+        cost += p()->buff.weapons_of_order_ww->value();
 
       if ( p()->buff.dance_of_chiji_hidden->up() )
-        cost -= p()->buff.dance_of_chiji->value();
+        cost += p()->buff.dance_of_chiji->value();
 
       if ( cost < 0 )
         cost = 0;
@@ -1909,7 +1949,7 @@ struct fists_of_fury_t : public monk_melee_attack_t
     if ( p()->buff.serenity->up() )
     {
       if ( p()->buff.weapons_of_order_ww->up() )
-        p()->gain.serenity->add( RESOURCE_CHI, base_costs[ RESOURCE_CHI ] - p()->buff.weapons_of_order_ww->value() );
+        p()->gain.serenity->add( RESOURCE_CHI, base_costs[ RESOURCE_CHI ] + p()->buff.weapons_of_order_ww->value() );
       else
         p()->gain.serenity->add( RESOURCE_CHI, base_costs[ RESOURCE_CHI ] );
     }
@@ -2277,8 +2317,7 @@ struct touch_of_death_t : public monk_melee_attack_t
   touch_of_death_t( monk_t& p, util::string_view options_str )
     : monk_melee_attack_t( "touch_of_death", &p, p.spec.touch_of_death )
   {
-    if ( p.dbc->ptr )
-      ww_mastery              = true;
+    ww_mastery              = true;
     may_crit = hasted_ticks = false;
     may_combo_strike        = true;
     parse_options( options_str );
@@ -7365,13 +7404,13 @@ void monk_t::trigger_empowered_tiger_lightning( action_state_t* s )
   {
     // Make sure Xuen is up and the action is not the Empowered Tiger Lightning itself (335913)
     // Touch of Karma (id = 124280) does not contribute to Empowered Tiger Lightning
-    if ( buff.invoke_xuen->check() && s->result_total > 0 && s->action->id != 335913 && s->action->id != 124280 )
+    if ( buff.invoke_xuen->check() && s->result_amount > 0 && s->action->id != 335913 && s->action->id != 124280 )
     {
       auto td = get_target_data( s->target );
 
       auto previous_value =
           td->debuff.empowered_tiger_lightning->check() ? td->debuff.empowered_tiger_lightning->current_value : 0;
-      auto new_value = previous_value + s->result_total;
+      auto new_value = previous_value + s->result_amount;
 
       td->debuff.empowered_tiger_lightning->trigger( -1, new_value, -1, buff.invoke_xuen->remains() );
     }
@@ -7380,13 +7419,14 @@ void monk_t::trigger_empowered_tiger_lightning( action_state_t* s )
 
 void monk_t::trigger_bonedust_brew( action_state_t* s )
 {
-  if ( covenant.necrolord->ok() && s->result_total > 0 && s->action->id != 325217 && s->action->id != 325218 )
+  // Make sure Bonedust Brew does not trigger from itself
+  if ( covenant.necrolord->ok() && s->result_amount > 0 && s->action->id != 325217 && s->action->id != 325218 )
   {
     if ( auto td = find_target_data( s->target ) )
     {
       if ( td->debuff.bonedust_brew->up() && rng().roll( covenant.necrolord->proc_chance() ) )
       {
-        double damage = s->result_total * covenant.necrolord->effectN( 1 ).percent();
+        double damage = s->result_amount * covenant.necrolord->effectN( 1 ).percent();
 
         // Bone Marrow Hops DOES NOT work with SEF or pets
         // "This" is referring to the player and does not work with "guardians" which is what SEF and pets are registered as

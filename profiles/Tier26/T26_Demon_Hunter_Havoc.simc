@@ -57,7 +57,6 @@ actions.cooldown=metamorphosis,if=!(talent.demonic.enabled|variable.pooling_for_
 actions.cooldown+=/metamorphosis,if=talent.demonic.enabled&(cooldown.eye_beam.remains>20&(!variable.blade_dance|cooldown.blade_dance.remains>gcd.max))&(!covenant.venthyr.enabled|!dot.sinful_brand.ticking)
 actions.cooldown+=/sinful_brand,if=!dot.sinful_brand.ticking
 actions.cooldown+=/the_hunt,if=!talent.demonic.enabled&!variable.waiting_for_momentum|buff.furious_gaze.up
-actions.cooldown+=/fodder_to_the_flame
 actions.cooldown+=/elysian_decree,if=(active_enemies>desired_targets|raid_event.adds.in>30)
 actions.cooldown+=/potion,if=buff.metamorphosis.remains>25|fight_remains<60
 # Default fallback for usable items.
@@ -127,11 +126,11 @@ off_hand=poxstorm_longsword_of_pestilence,id=178754,bonus_id=3535/4786/1540,ench
 
 # Gear Summary
 # gear_ilvl=229.19
-# gear_agility=887
-# gear_stamina=1519
+# gear_agility=885
+# gear_stamina=1521
 # gear_attack_power=40
-# gear_crit_rating=326
-# gear_haste_rating=946
-# gear_mastery_rating=146
-# gear_versatility_rating=526
+# gear_crit_rating=328
+# gear_haste_rating=951
+# gear_mastery_rating=149
+# gear_versatility_rating=531
 # gear_armor=608
