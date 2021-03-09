@@ -25,4 +25,4 @@ artifacts:
     location: 'gs://us.artifacts.stately-rampart-199708.appspot.com/binary/'
     paths: ['./engine/simc']
 
-timeout: 1800s
+timeout: 3600s
