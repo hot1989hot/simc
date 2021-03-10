@@ -22,7 +22,7 @@ substitutions:
 
 artifacts:
   objects:
-    location: 'gs://us.artifacts.stately-rampart-199708.appspot.com/binary/'
+    location: 'gs://us.artifacts.stately-rampart-199708.appspot.com/simcbinary/'
     paths: ['./engine/simc']
 
 timeout: 3600s
