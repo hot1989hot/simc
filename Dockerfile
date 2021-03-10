@@ -21,7 +21,7 @@
 #   - ./simc
 #   - ./profiles/*
 #
-
+# CI SKIP
 # base image
 FROM alpine:latest AS build
 
