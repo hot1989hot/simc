@@ -380,7 +380,10 @@ public:
     if ( p()->buff.faeline_stomp->up() && ab::background == false &&
          p()->rng().roll( p()->user_options.faeline_stomp_uptime ) )
       if ( p()->rng().roll( p()->buff.faeline_stomp->value() ) )
+      {
         p()->cooldown.faeline_stomp->reset( true, 1 );
+        p()->buff.faeline_stomp_reset->trigger();
+      }
   }
 
   void impact( action_state_t* s ) override
@@ -1490,10 +1493,6 @@ struct blackout_kick_t : public monk_melee_attack_t
           if ( p()->buff.weapons_of_order->up() )
             cd_reduction += ( -1 * p()->covenant.kyrian->effectN( 8 ).time_value() );
 
-          // Reduction is getting halved during Serenity
-          if ( p()->buff.serenity->up() )
-            cd_reduction *= 1.0 / ( 1 + p()->talent.serenity->effectN( 4 ).percent() );
-
           p()->cooldown.rising_sun_kick->adjust( cd_reduction, true );
           p()->cooldown.fists_of_fury->adjust( cd_reduction, true );
         }
@@ -1773,6 +1772,7 @@ struct spinning_crane_kick_t : public monk_melee_attack_t
   {
     monk_melee_attack_t::consume_resource();
 
+    // Register how much chi is saved without actually refunding the chi
     if ( p()->buff.serenity->up() )
     {
       double cost = base_costs[ RESOURCE_CHI ];
@@ -1786,7 +1786,7 @@ struct spinning_crane_kick_t : public monk_melee_attack_t
       if ( cost < 0 )
         cost = 0;
 
-      p()->resource_gain( RESOURCE_CHI, cost, p()->gain.serenity );
+      p()->gain.serenity->add( RESOURCE_CHI, cost );
     }
   }
 
@@ -3820,6 +3820,13 @@ struct faeline_stomp_t : public monk_spell_t
     parse_options( options_str );
     may_combo_strike = true;
     aoe              = (int)p.covenant.night_fae->effectN( 3 ).base_value();
+  }
+
+  void execute() override
+  {
+    monk_spell_t::execute();
+
+    p()->buff.faeline_stomp_reset->expire();
   }
 
   void impact( action_state_t* s ) override
@@ -6291,6 +6298,8 @@ void monk_t::create_buffs()
 
   buff.faeline_stomp_brm =
       make_buff( this, "faeline_stomp_brm", passives.faeline_stomp_brm )->set_default_value_from_effect( 1 );
+
+  buff.faeline_stomp_reset = make_buff( this, "faeline_stomp_reset", find_spell( 327276 ) );
 
   // Covenant Conduits
   buff.fortifying_ingrediences = make_buff<absorb_buff_t>( this, "fortifying_ingredients", find_spell( 336874 ) );

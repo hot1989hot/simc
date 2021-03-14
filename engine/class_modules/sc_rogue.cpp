@@ -1343,10 +1343,7 @@ public:
     if ( ab::energize_type != action_energize::NONE && ab::energize_resource == RESOURCE_COMBO_POINT )
     {
       cp += ab::energize_amount;
-    }
 
-    if ( cp > 0 )
-    {
       if ( affected_by.broadside_cp )
       {
         cp += p()->buffs.broadside->check_value();
@@ -2442,9 +2439,8 @@ struct between_the_eyes_t : public rogue_attack_t
 struct blade_flurry_attack_t : public rogue_attack_t
 {
   blade_flurry_attack_t( util::string_view name, rogue_t* p ) :
-    rogue_attack_t( name, p, p -> find_spell( 22482 ) )
+    rogue_attack_t( name, p, p->find_spell( 22482 ) )
   {
-    callbacks = false;
     radius = 5;
     range = -1.0;
 
@@ -2477,7 +2473,7 @@ struct blade_flurry_t : public rogue_attack_t
   struct blade_flurry_instant_attack_t : public rogue_attack_t
   {
     blade_flurry_instant_attack_t( util::string_view name, rogue_t* p ) :
-      rogue_attack_t( name, p, p -> find_spell( 331850 ) )
+      rogue_attack_t( name, p, p->find_spell( 331850 ) )
     {
       range = -1.0;
     }
@@ -4530,6 +4526,8 @@ struct serrated_bone_spike_t : public rogue_attack_t
       // 02/13/2021 - Logs show that the SBS DoT is affected by Zoldyck
       affected_by.zoldyck_insignia = true;
       dot_duration = timespan_t::from_seconds( sim->expected_max_time() * 2 );
+      // 2021-03-12 - Bone spike dot is hasted, despite not being flagged as such
+      hasted_ticks = true;
 
       if ( p->conduit.sudden_fractures.ok() )
       {
